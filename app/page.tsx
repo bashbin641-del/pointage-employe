@@ -1,5 +1,8 @@
-import Image from 'next/image';
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import EmployeeWorkspace from "@/components/employee-workspace";
+import { coreApi } from "@/lib/api/server";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
-  return <main className="app-shell"><header className="topbar"><span className="brand"><Image src="/brand/inox-logo.png" alt="INOX Technologies" width={76} height={54} /> <span>INOX PRÉSENCE</span></span><button className="quiet-button">Se connecter</button></header><section className="content"><p className="eyebrow">ESPACE EMPLOYÉ</p><h1>Ma carte professionnelle</h1><p className="intro">Votre carte et vos pointages seront disponibles après connexion.</p><article className="employee-card"><div className="avatar" aria-hidden="true">IP</div><div><p className="card-label">Carte personnelle</p><h2>Connexion requise</h2><p className="muted">Aucune donnée personnelle n’est affichée avant authentification.</p></div></article><div className="actions"><button className="primary-button">Afficher mon QR</button><button className="secondary-button">Mes pointages</button></div></section></main>;
-}
+export const instant = false;
+export default async function Home() { await connection(); const { data } = await (await createClient()).auth.getUser(); if (!data.user) redirect("/connexion"); const [meResponse, attendanceResponse] = await Promise.all([coreApi("moi"), coreApi("moi/pointages")]); if (meResponse.status === 404) return <main className="login-page"><section className="login-card"><p className="eyebrow">ACCÈS EMPLOYÉ</p><h1>Profil non attribué</h1><p>Ce compte est valide, mais aucune fiche employé active ne lui est associée. Contactez un administrateur.</p><form action="/api/auth/logout" method="post"><button className="secondary-button">Se déconnecter</button></form></section></main>; if (!meResponse.ok) throw new Error("EMPLOYEE_PROFILE_UNAVAILABLE"); const { employee } = await meResponse.json() as { employee: { id: string; displayName: string; matricule: string; site: { name: string; timezone: string } | null } }; const events = attendanceResponse.ok ? (await attendanceResponse.json() as { items: [] }).items : []; return <EmployeeWorkspace employee={employee} initialEvents={events} />; }
