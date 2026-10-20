@@ -1,14 +1,100 @@
 "use client";
+
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useEmployeeRealtime } from "@/lib/use-employee-realtime";
+
 type Employee = { id: string; displayName: string; matricule: string; site: { name: string; timezone: string } | null };
 type Event = { id: string; event_type: "entree" | "sortie"; occurred_at: string; sites: { name: string } | null; terminaux: { name: string } | null };
 type Qr = { payload: string; expiresAt: string; serverTime: string };
+
 export default function EmployeeWorkspace({ employee, initialEvents }: { employee: Employee; initialEvents: Event[] }) {
-  const [section, setSection] = useState<"card" | "history" | "profile">("card"); const [items, setItems] = useState(initialEvents); const [qr, setQr] = useState<Qr | null>(null); const [seconds, setSeconds] = useState(0); const [pending, setPending] = useState(false); const [error, setError] = useState("");
-  useEffect(() => { if (!qr) return; const update = () => setSeconds(Math.max(0, Math.ceil((new Date(qr.expiresAt).getTime() - Date.now()) / 1000))); update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer); }, [qr]);
-  async function generateQr() { setPending(true); setError(""); try { const response = await fetch("/api/core/moi/qr", { method: "POST" }); const result = await response.json() as Qr; if (!response.ok || !result.payload) throw new Error(); setQr(result); } catch { setError("Impossible de générer un QR. Vérifiez votre connexion et réessayez."); setQr(null); } finally { setPending(false); } }
-  async function refreshHistory() { setPending(true); setError(""); try { const response = await fetch("/api/core/moi/pointages", { cache: "no-store" }); if (!response.ok) throw new Error(); setItems((await response.json() as { items: Event[] }).items); } catch { setError("Impossible d’actualiser l’historique."); } finally { setPending(false); } }
-  return <main className="app-shell"><header className="topbar"><span className="brand"><Image src="/brand/inox-logo.png" alt="INOX Technologies" width={76} height={54} priority /><span>INOX PRÉSENCE</span></span><form action="/api/auth/logout" method="post"><button className="quiet-button">Se déconnecter</button></form></header><section className="content"><p className="eyebrow">ESPACE EMPLOYÉ</p>{section === "card" ? <><h1>Ma carte professionnelle</h1><article className="employee-card"><div className="avatar" aria-hidden="true">{employee.displayName.split(" ").slice(0,2).map((part) => part[0]).join("").toUpperCase()}</div><div><p className="card-label">Identité professionnelle</p><h2>{employee.displayName}</h2><p className="muted">Matricule : {employee.matricule}<br />Site : {employee.site?.name ?? "Non affecté"}</p></div></article><section className="qr-card" aria-live="polite">{qr && seconds > 0 ? <><QRCodeSVG value={qr.payload} size={220} level="M" marginSize={2} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code à une borne autorisée.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}<button className="primary-button" onClick={() => void generateQr()} disabled={pending || !employee.site}>{pending ? "Génération…" : "Générer un nouveau QR"}</button></section></> : null}{section === "history" ? <><div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" onClick={() => void refreshHistory()} disabled={pending}>Actualiser</button></div>{items.length ? <ul className="history-list">{items.map((item) => <li key={item.id}><strong>{item.event_type === "entree" ? "Entrée" : "Sortie"}</strong><span>{new Intl.DateTimeFormat("fr-CI", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Abidjan" }).format(new Date(item.occurred_at))}</span><small>{item.sites?.name} · {item.terminaux?.name}</small></li>)}</ul> : <div className="empty-state"><h2>Aucun pointage</h2><p>Aucun événement confirmé n’est enregistré pour votre compte.</p></div>}</> : null}{section === "profile" ? <><h1>Mon profil</h1><article className="profile-card"><dl><div><dt>Nom</dt><dd>{employee.displayName}</dd></div><div><dt>Matricule</dt><dd>{employee.matricule}</dd></div><div><dt>Site</dt><dd>{employee.site?.name ?? "Non affecté"}</dd></div></dl></article></> : null}{error ? <p className="error-message" role="alert">{error}</p> : null}</section><nav className="bottom-nav" aria-label="Navigation employé"><button className={section === "card" ? "active" : ""} aria-current={section === "card" ? "page" : undefined} onClick={() => setSection("card")}>Ma carte</button><button className={section === "history" ? "active" : ""} aria-current={section === "history" ? "page" : undefined} onClick={() => setSection("history")}>Historique</button><button className={section === "profile" ? "active" : ""} aria-current={section === "profile" ? "page" : undefined} onClick={() => setSection("profile")}>Profil</button></nav></main>;
+  const [section, setSection] = useState<"card" | "history" | "profile">("card");
+  const [items, setItems] = useState(initialEvents);
+  const [qr, setQr] = useState<Qr | null>(null);
+  const [seconds, setSeconds] = useState(0);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!qr) return;
+    const update = () => setSeconds(Math.max(0, Math.ceil((new Date(qr.expiresAt).getTime() - Date.now()) / 1_000)));
+    update();
+    const timer = window.setInterval(update, 1_000);
+    return () => window.clearInterval(timer);
+  }, [qr]);
+
+  const refreshHistory = useCallback(async (silent = false) => {
+    if (!silent) {
+      setPending(true);
+      setError("");
+    }
+    try {
+      const response = await fetch("/api/core/moi/pointages", { cache: "no-store" });
+      if (!response.ok) throw new Error();
+      setItems((await response.json() as { items: Event[] }).items);
+    } catch {
+      if (!silent) setError("Impossible d’actualiser l’historique.");
+    } finally {
+      if (!silent) setPending(false);
+    }
+  }, []);
+
+  useEmployeeRealtime((event) => {
+    if (event.type !== "attendance.recorded") return;
+    setQr(null);
+    setSeconds(0);
+    void refreshHistory(true);
+  });
+
+  async function generateQr() {
+    setPending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/core/moi/qr", { method: "POST" });
+      const result = await response.json() as Qr;
+      if (!response.ok || !result.payload) throw new Error();
+      setQr(result);
+    } catch {
+      setError("Impossible de générer un QR. Vérifiez votre connexion et réessayez.");
+      setQr(null);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <main className="app-shell">
+      <header className="topbar">
+        <span className="brand"><Image src="/brand/inox-logo.png" alt="INOX Technologies" width={76} height={54} priority /><span>INOX PRÉSENCE</span></span>
+        <form action="/api/auth/logout" method="post"><button className="quiet-button">Se déconnecter</button></form>
+      </header>
+      <section className="content">
+        <p className="eyebrow">ESPACE EMPLOYÉ</p>
+        {section === "card" ? <>
+          <h1>Ma carte professionnelle</h1>
+          <article className="employee-card">
+            <div className="avatar" aria-hidden="true">{employee.displayName.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</div>
+            <div><p className="card-label">Identité professionnelle</p><h2>{employee.displayName}</h2><p className="muted">Matricule : {employee.matricule}<br />Site : {employee.site?.name ?? "Non affecté"}</p></div>
+          </article>
+          <section className="qr-card" aria-live="polite">
+            {qr && seconds > 0 ? <><QRCodeSVG value={qr.payload} size={220} level="M" marginSize={2} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code à une borne autorisée.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}
+            <button className="primary-button" onClick={() => void generateQr()} disabled={pending || !employee.site}>{pending ? "Génération…" : "Générer un nouveau QR"}</button>
+          </section>
+        </> : null}
+        {section === "history" ? <>
+          <div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" onClick={() => void refreshHistory()} disabled={pending}>Actualiser</button></div>
+          {items.length ? <ul className="history-list">{items.map((item) => <li key={item.id}><strong>{item.event_type === "entree" ? "Entrée" : "Sortie"}</strong><span>{new Intl.DateTimeFormat("fr-CI", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Abidjan" }).format(new Date(item.occurred_at))}</span><small>{item.sites?.name} · {item.terminaux?.name}</small></li>)}</ul> : <div className="empty-state"><h2>Aucun pointage</h2><p>Aucun événement confirmé n’est enregistré pour votre compte.</p></div>}
+        </> : null}
+        {section === "profile" ? <><h1>Mon profil</h1><article className="profile-card"><dl><div><dt>Nom</dt><dd>{employee.displayName}</dd></div><div><dt>Matricule</dt><dd>{employee.matricule}</dd></div><div><dt>Site</dt><dd>{employee.site?.name ?? "Non affecté"}</dd></div></dl></article></> : null}
+        {error ? <p className="error-message" role="alert">{error}</p> : null}
+      </section>
+      <nav className="bottom-nav" aria-label="Navigation employé">
+        <button className={section === "card" ? "active" : ""} aria-current={section === "card" ? "page" : undefined} onClick={() => setSection("card")}>Ma carte</button>
+        <button className={section === "history" ? "active" : ""} aria-current={section === "history" ? "page" : undefined} onClick={() => setSection("history")}>Historique</button>
+        <button className={section === "profile" ? "active" : ""} aria-current={section === "profile" ? "page" : undefined} onClick={() => setSection("profile")}>Profil</button>
+      </nav>
+    </main>
+  );
 }
