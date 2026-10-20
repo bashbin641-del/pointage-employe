@@ -83,7 +83,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
             <div><p className="card-label">Identité professionnelle</p><h2>{employee.displayName}</h2><p className="muted">Matricule : {employee.matricule}<br />Site : {employee.site?.name ?? "Non affecté"}</p></div>
           </article>
           <section className="qr-card" aria-live="polite">
-            {qr && seconds > 0 ? <><QRCodeSVG value={qr.payload} size={220} level="M" marginSize={2} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code à une borne autorisée.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}
+            {qr && seconds > 0 ? <><QRCodeSVG className="attendance-qr" value={qr.payload} size={360} level="M" marginSize={3} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code bien à plat face à la borne.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}
             {pendingAction === "qr" ? <span className="compact-data-loader" role="status" aria-live="polite"><span className="compact-data-spinner" aria-hidden="true" />Génération du QR…</span> : null}
             <button className="primary-button" type="button" onClick={() => void generateQr()} disabled={pendingAction !== null || !employee.site}>Générer un nouveau QR</button>
           </section>
