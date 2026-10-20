@@ -1,5 +1,40 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-export default function LoginForm() { const router = useRouter(); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [pending, setPending] = useState(false); const [error, setError] = useState(""); async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setPending(true); setError(""); try { const { error: signInError } = await (await createClient()).auth.signInWithPassword({ email: email.trim().toLowerCase(), password }); if (signInError) throw signInError; router.replace("/"); router.refresh(); } catch { setError("Adresse e-mail ou mot de passe incorrect."); } finally { setPending(false); } } return <form className="login-form" onSubmit={submit}><label>E-mail professionnel<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><label>Mot de passe<input type="password" autoComplete="current-password" required minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} /></label>{error ? <p className="error-message" role="alert">{error}</p> : null}<button className="primary-button" disabled={pending}>{pending ? "Connexion…" : "Se connecter"}</button><p className="muted">L’accès est créé par un administrateur INOX. Il n’y a pas d’inscription publique.</p></form>; }
+
+export default function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    try {
+      const { error: signInError } = await (await createClient()).auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (signInError) {
+        if (signInError.code === "user_banned") {
+          setError("Votre compte est bloqué. Contactez un administrateur INOX pour demander sa réactivation.");
+          return;
+        }
+        throw signInError;
+      }
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError("Adresse e-mail ou mot de passe incorrect.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return <form className="login-form" onSubmit={submit}><label>E-mail professionnel<input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><label>Mot de passe<input type="password" autoComplete="current-password" required minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} /></label>{error ? <p className="error-message" role="alert">{error}</p> : null}<button className="primary-button" disabled={pending}>{pending ? "Connexion…" : "Se connecter"}</button><p className="muted">L’accès est créé par un administrateur INOX. Il n’y a pas d’inscription publique.</p></form>;
+}

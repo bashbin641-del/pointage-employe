@@ -42,6 +42,10 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
   }, []);
 
   useEmployeeRealtime((event) => {
+    if (event.type === "employee.updated" || event.type === "employee.deleted") {
+      window.location.reload();
+      return;
+    }
     if (event.type !== "attendance.recorded") return;
     setQr(null);
     setSeconds(0);
