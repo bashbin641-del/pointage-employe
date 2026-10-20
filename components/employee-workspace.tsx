@@ -14,7 +14,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
   const [items, setItems] = useState(initialEvents);
   const [qr, setQr] = useState<Qr | null>(null);
   const [seconds, setSeconds] = useState(0);
-  const [pending, setPending] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"qr" | "history" | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
 
   const refreshHistory = useCallback(async (silent = false) => {
     if (!silent) {
-      setPending(true);
+      setPendingAction("history");
       setError("");
     }
     try {
@@ -37,7 +37,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
     } catch {
       if (!silent) setError("Impossible d’actualiser l’historique.");
     } finally {
-      if (!silent) setPending(false);
+      if (!silent) setPendingAction(null);
     }
   }, []);
 
@@ -49,7 +49,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
   });
 
   async function generateQr() {
-    setPending(true);
+    setPendingAction("qr");
     setError("");
     try {
       const response = await fetch("/api/core/moi/qr", { method: "POST" });
@@ -60,7 +60,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
       setError("Impossible de générer un QR. Vérifiez votre connexion et réessayez.");
       setQr(null);
     } finally {
-      setPending(false);
+      setPendingAction(null);
     }
   }
 
@@ -80,11 +80,13 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
           </article>
           <section className="qr-card" aria-live="polite">
             {qr && seconds > 0 ? <><QRCodeSVG value={qr.payload} size={220} level="M" marginSize={2} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code à une borne autorisée.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}
-            <button className="primary-button" type="button" onClick={() => void generateQr()} disabled={pending || !employee.site}>{pending ? "Génération…" : "Générer un nouveau QR"}</button>
+            {pendingAction === "qr" ? <span className="compact-data-loader" role="status" aria-live="polite"><span className="compact-data-spinner" aria-hidden="true" />Génération du QR…</span> : null}
+            <button className="primary-button" type="button" onClick={() => void generateQr()} disabled={pendingAction !== null || !employee.site}>Générer un nouveau QR</button>
           </section>
         </> : null}
         {section === "history" ? <>
-          <div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" type="button" onClick={() => void refreshHistory()} disabled={pending}>Actualiser</button></div>
+          <div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" type="button" onClick={() => void refreshHistory()} disabled={pendingAction !== null}>Actualiser</button></div>
+          {pendingAction === "history" ? <span className="compact-data-loader" role="status" aria-live="polite"><span className="compact-data-spinner" aria-hidden="true" />Actualisation de l’historique…</span> : null}
           {items.length ? <ul className="history-list">{items.map((item) => <li key={item.id}><strong>{item.event_type === "entree" ? "Entrée" : "Sortie"}</strong><span>{new Intl.DateTimeFormat("fr-CI", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Abidjan" }).format(new Date(item.occurred_at))}</span><small>{item.sites?.name} · {item.terminaux?.name}</small></li>)}</ul> : <div className="empty-state"><h2>Aucun pointage</h2><p>Aucun événement confirmé n’est enregistré pour votre compte.</p></div>}
         </> : null}
         {section === "profile" ? <><h1>Mon profil</h1><article className="profile-card"><dl><div><dt>Nom</dt><dd>{employee.displayName}</dd></div><div><dt>Matricule</dt><dd>{employee.matricule}</dd></div><div><dt>Site</dt><dd>{employee.site?.name ?? "Non affecté"}</dd></div></dl></article></> : null}
