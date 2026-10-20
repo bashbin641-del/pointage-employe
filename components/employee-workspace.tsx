@@ -80,20 +80,20 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
           </article>
           <section className="qr-card" aria-live="polite">
             {qr && seconds > 0 ? <><QRCodeSVG value={qr.payload} size={220} level="M" marginSize={2} aria-label="QR temporaire de pointage" /><strong>Expire dans {seconds} s</strong><p>Présentez ce code à une borne autorisée.</p></> : <><div className="qr-placeholder" aria-hidden="true">QR</div><p>{qr ? "Ce QR a expiré. Générez-en un nouveau." : "Aucun QR actif."}</p></>}
-            <button className="primary-button" onClick={() => void generateQr()} disabled={pending || !employee.site}>{pending ? "Génération…" : "Générer un nouveau QR"}</button>
+            <button className="primary-button" type="button" onClick={() => void generateQr()} disabled={pending || !employee.site}>{pending ? "Génération…" : "Générer un nouveau QR"}</button>
           </section>
         </> : null}
         {section === "history" ? <>
-          <div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" onClick={() => void refreshHistory()} disabled={pending}>Actualiser</button></div>
+          <div className="section-heading"><div><h1>Historique de présence</h1><p className="intro">Pointages confirmés par l’API centrale.</p></div><button className="secondary-button" type="button" onClick={() => void refreshHistory()} disabled={pending}>Actualiser</button></div>
           {items.length ? <ul className="history-list">{items.map((item) => <li key={item.id}><strong>{item.event_type === "entree" ? "Entrée" : "Sortie"}</strong><span>{new Intl.DateTimeFormat("fr-CI", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Abidjan" }).format(new Date(item.occurred_at))}</span><small>{item.sites?.name} · {item.terminaux?.name}</small></li>)}</ul> : <div className="empty-state"><h2>Aucun pointage</h2><p>Aucun événement confirmé n’est enregistré pour votre compte.</p></div>}
         </> : null}
         {section === "profile" ? <><h1>Mon profil</h1><article className="profile-card"><dl><div><dt>Nom</dt><dd>{employee.displayName}</dd></div><div><dt>Matricule</dt><dd>{employee.matricule}</dd></div><div><dt>Site</dt><dd>{employee.site?.name ?? "Non affecté"}</dd></div></dl></article></> : null}
         {error ? <p className="error-message" role="alert">{error}</p> : null}
       </section>
       <nav className="bottom-nav" aria-label="Navigation employé">
-        <button className={section === "card" ? "active" : ""} aria-current={section === "card" ? "page" : undefined} onClick={() => setSection("card")}>Ma carte</button>
-        <button className={section === "history" ? "active" : ""} aria-current={section === "history" ? "page" : undefined} onClick={() => setSection("history")}>Historique</button>
-        <button className={section === "profile" ? "active" : ""} aria-current={section === "profile" ? "page" : undefined} onClick={() => setSection("profile")}>Profil</button>
+        <button type="button" className={section === "card" ? "active" : ""} aria-current={section === "card" ? "page" : undefined} onClick={() => setSection("card")}>Ma carte</button>
+        <button type="button" className={section === "history" ? "active" : ""} aria-current={section === "history" ? "page" : undefined} onClick={() => setSection("history")}>Historique</button>
+        <button type="button" className={section === "profile" ? "active" : ""} aria-current={section === "profile" ? "page" : undefined} onClick={() => setSection("profile")}>Profil</button>
       </nav>
     </main>
   );
