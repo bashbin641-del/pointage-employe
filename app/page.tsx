@@ -27,5 +27,5 @@ export default async function Home() {
     employee: { id: string; displayName: string; matricule: string; site: { name: string; timezone: string } | null };
   };
   const events = attendanceResponse.ok ? (await attendanceResponse.json() as { items: [] }).items : [];
-  return <EmployeeWorkspace employee={employee} initialEvents={events} />;
+  return <EmployeeWorkspace employee={{ ...employee, email: data.user.email ?? "Adresse indisponible" }} initialEvents={events} />;
 }
