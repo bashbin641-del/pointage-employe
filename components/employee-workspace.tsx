@@ -4,6 +4,7 @@ import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import EmployeePasswordSettings from "@/components/employee-password-settings";
+import EmployeeEmailSettings from "@/components/employee-email-settings";
 import { useEmployeeRealtime } from "@/lib/use-employee-realtime";
 
 type Employee = { id: string; displayName: string; matricule: string; email: string; site: { name: string; timezone: string } | null };
@@ -95,7 +96,7 @@ export default function EmployeeWorkspace({ employee, initialEvents }: { employe
           {items.length ? <ul className="history-list" tabIndex={0} aria-label="Historique des présences, défilement vertical disponible">{items.map((item) => <li key={item.id}><strong>{item.event_type === "entree" ? "Entrée" : "Sortie"}</strong><span>{new Intl.DateTimeFormat("fr-CI", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Abidjan" }).format(new Date(item.occurred_at))}</span><small>{item.sites?.name} · {item.terminaux?.name}</small></li>)}</ul> : <div className="empty-state"><h2>Aucun pointage</h2><p>Aucun événement confirmé n’est enregistré pour votre compte.</p></div>}
         </> : null}
         {section === "profile" ? <><h1>Mon profil</h1><article className="profile-card"><dl><div><dt>Nom</dt><dd>{employee.displayName}</dd></div><div><dt>Matricule</dt><dd>{employee.matricule}</dd></div><div><dt>Adresse de connexion</dt><dd>{employee.email}</dd></div><div><dt>Site</dt><dd>{employee.site?.name ?? "Non affecté"}</dd></div></dl></article></> : null}
-        {section === "settings" ? <EmployeePasswordSettings email={employee.email} /> : null}
+        {section === "settings" ? <div className="settings-stack"><EmployeeEmailSettings email={employee.email} /><EmployeePasswordSettings email={employee.email} /></div> : null}
         {error ? <p className="error-message" role="alert">{error}</p> : null}
       </section>
       <nav className="bottom-nav" aria-label="Navigation employé">

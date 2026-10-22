@@ -33,8 +33,8 @@ export default function EmployeePasswordSettings({ email }: { email: string }) {
     event.preventDefault();
     setError("");
     setSuccess("");
-    if (!/^\d{6,8}$/.test(nonce)) {
-      setError("Saisissez le code numérique reçu par e-mail.");
+    if (!/^\d{8}$/.test(nonce)) {
+      setError("Saisissez le code à 8 chiffres reçu par e-mail.");
       return;
     }
     if (password.length < 12) {
@@ -49,7 +49,7 @@ export default function EmployeePasswordSettings({ email }: { email: string }) {
     setPending(true);
     try {
       const supabase = await createClient();
-      const { error: passwordError } = await supabase.auth.updateUser({ email, password, nonce });
+      const { error: passwordError } = await supabase.auth.updateUser({ password, nonce });
       if (passwordError) throw passwordError;
       setNonce("");
       setPassword("");
@@ -72,7 +72,7 @@ export default function EmployeePasswordSettings({ email }: { email: string }) {
         <button className="primary-button" type="button" onClick={() => void requestCode()} disabled={pending}>{pending ? "Envoi du code…" : "Envoyer le code de vérification"}</button>
       ) : (
         <form className="password-form" onSubmit={submit}>
-          <label>Code reçu par e-mail<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,8}" minLength={6} maxLength={8} required value={nonce} onChange={(event) => setNonce(event.target.value.replace(/\D/g, ""))} /></label>
+          <label>Code à 8 chiffres reçu par e-mail<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}" minLength={8} maxLength={8} required value={nonce} onChange={(event) => setNonce(event.target.value.replace(/\D/g, ""))} /></label>
           <label>Nouveau mot de passe<input type="password" autoComplete="new-password" minLength={12} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           <label>Confirmer le mot de passe<input type="password" autoComplete="new-password" minLength={12} required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>
           <div className="settings-actions">
